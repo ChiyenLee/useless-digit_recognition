@@ -17,10 +17,11 @@ def main():
     test_images, test_labels = mndata.load_testing()
 
     classifier = svm.SVC(probability=False, kernel="rbf", C=2.8, gamma=.0073)
-    tr_images = np.array(tr_images[:1000])
-    tr_labels = np.array(tr_labels[:1000])
+    tr_images = np.array(tr_images[:60000])
+    tr_labels = np.array(tr_labels[:60000])
     tr_images = tr_images / 255 * 2 - 1
 
+    print('training ....')
     classifier.fit(tr_images, tr_labels)
     
     f = open('trained_svm_model_small', 'wb+')

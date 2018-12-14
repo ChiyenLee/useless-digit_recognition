@@ -1,9 +1,3 @@
-# process_digit.py
-# John Lee 2018.11.20
-# Code that runs on the Raspberry PI
-# that waits for a button click before 
-# classifying an image to a digit from 0 - 10
-
 import numpy as np
 import cv2
 import math
@@ -13,12 +7,19 @@ import time
 
 def main():
 
+    # define out put pins to the FPGA
+    digit_pin_0 = gpiozero.OutputDevice(4)
+    digit_pin_1 = gpiozero.OutputDevice(17)
+    digit_pin_2 = gpiozero.OutputDevice(27)
+    digit_pin_3 = gpiozero.OutputDevice(22)
+    load = gpiozero.OutputDevice(26)
+
     # Define camera button
-    camera_button = gpiozero.InputDevice(18) # at pin 18
+    camera_button = gpiozero.InputDevice(25) # at pin 18
 
     # load the trained svm model 
     print('loading model')
-    f = open('trained_svm_model_small', 'rb')
+    f = open('trained_svm_model_big', 'rb')
     classifier = pickle.load(f)
         
     # Initiate camera
@@ -30,7 +31,9 @@ def main():
             if camera_button.value:
                 print('Captured! Processing ')
                 break
-
+        # clear cmaera buffer
+        for i in range(4):
+            camera.grab()
         return_value, image = camera.read()
 
         # First blur the image for easier processing
@@ -48,13 +51,15 @@ def main():
         # be a digit. NEEDS calibration before start
         for c in contours:
             (x, y, w, h) = cv2.boundingRect(c)
-            if (w > 10 and w < 320) and (h > 180 and h < 280):
+            if (w > 10 and w < 320) and (h > 100 and h < 300):
                 detected_digits.append(c)
 
         if detected_digits == []:
             print("Nothing detected... Try again")
 
         else:
+            load.off()
+
             (x,y,w,h) = cv2.boundingRect(detected_digits[0])
             digit = thres1[y:y+h, x:x+w]
             # use interarea to shrink without losing pixel value
@@ -78,6 +83,16 @@ def main():
             cv2.imwrite( "digit_" + str(counter) + ".jpg", digit);
 
             counter = counter + 1
+
+            result_binary = format(result[0], '04b')
+        
+            load.on()
+            digit_pin_0.on()  if result_binary[3] == '1' else digit_pin_0.off()
+            digit_pin_1.on()  if result_binary[2] == '1' else digit_pin_1.off()
+            digit_pin_2.on()  if result_binary[1] == '1' else digit_pin_2.off()
+            digit_pin_3.on()  if result_binary[0] == '1' else digit_pin_3.off()
+
+
 
         time.sleep(1)
 
